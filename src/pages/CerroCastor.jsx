@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-
-function calcularPorcentaje(arr, condicion) {
-  const total = arr.length;
-  const cumplidos = arr.filter(condicion).length;
-  return Math.round((cumplidos / total) * 100);
-}
+import ProbabilityPanel from "../components/ProbabilityPanel";
+import Graphics from "../components/Graphics";
+import { API_CERRO_CASTOR } from "../utils/constants";
 
 export default function CerroCastor() {
-  const [data, setData] = useState(null);
+  const [probData, setProbData] = useState(null);
 
   useEffect(() => {
     fetch(
@@ -15,35 +12,44 @@ export default function CerroCastor() {
     )
       .then((res) => res.json())
       .then((json) => {
-        const porcentajes = {
-          nieve24h: calcularPorcentaje(json.hourly.snowfall.slice(0, 24), v => v > 0),
-          lluvia24h: calcularPorcentaje(json.hourly.precipitation.slice(0, 24), v => v > 0),
-          viento24h: calcularPorcentaje(json.hourly.windspeed_10m.slice(0, 24), v => v > 45),
-          nieve7d: calcularPorcentaje(json.daily.precipitation_sum.slice(0, 7), v => v > 0),
-          lluvia7d: calcularPorcentaje(json.daily.snowfall_sum.slice(0, 7), v => v > 0),
-          viento7d: calcularPorcentaje(json.daily.windspeed_10m_max.slice(0, 7), v => v > 45),
-        };
-        setData(porcentajes);
+        const hourly = json.hourly;
+        const daily = json.daily;
+
+        const nieve24h = hourly.snowfall.slice(0, 24);
+        const lluvia24h = hourly.precipitation.slice(0, 24);
+        const viento24h = hourly.windspeed_10m.slice(0, 24);
+
+        const nieve24 = (nieve24h.filter((n) => n > 0).length / 24) * 100;
+        const lluvia24 = (lluvia24h.filter((p) => p > 0).length / 24) * 100;
+        const viento24 = (viento24h.filter((v) => v > 45).length / 24) * 100;
+
+        const nieve7 = (daily.snowfall_sum.filter((n) => n > 0).length / 7) * 100;
+        const lluvia7 = (daily.precipitation_sum.filter((p) => p > 0).length / 7) * 100;
+        const viento7 = (daily.windspeed_10m_max.filter((v) => v > 45).length / 7) * 100;
+
+        setProbData({
+          nieve24: Math.round(nieve24),
+          lluvia24: Math.round(lluvia24),
+          viento24: Math.round(viento24),
+          nieve7d: Math.round(nieve7),
+          lluvia7d: Math.round(lluvia7),
+          viento7d: Math.round(viento7),
+        });
       });
   }, []);
 
-  if (!data) return <div className="p-4 text-center">Cargando datos del cerro...</div>;
 
-  const cuadro = (label, valor) => (
-    <div className="bg-white rounded-2xl shadow p-4 text-center">
-      <div className="text-lg font-semibold mb-2">{label}</div>
-      <div className="text-3xl font-bold">{valor}%</div>
-    </div>
-  );
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 font-sans">
-      {cuadro("Nieve próximas 24h", data.nieve24h)}
-      {cuadro("Nieve próxima semana", data.nieve7d)}
-      {cuadro("Lluvia próximas 24h", data.lluvia24h)}
-      {cuadro("Lluvia próxima semana", data.lluvia7d)}
-      {cuadro("Vientos fuertes 24h", data.viento24h)}
-      {cuadro("Vientos fuertes semana", data.viento7d)}
+    <div className="p-6">
+      <h1 className="text-3xl font-bold text-center mb-6">Cerro Castor</h1>
+      {probData ? (
+        <ProbabilityPanel {...probData} />
+      ) : (
+        <p className="text-center">Cargando datos...</p>
+      )}
+      <Graphics title="Pronóstico horario para Cerro Castor" apiUrl={API_CERRO_CASTOR} />;
     </div>
+      
   );
 }
